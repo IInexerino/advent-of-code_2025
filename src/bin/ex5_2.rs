@@ -1,5 +1,6 @@
 use std::{fs::File, io::{BufRead, BufReader}};
 
+#[derive(Clone)]
 struct FreshRange {
     lower: u128,
     upper: u128
@@ -9,6 +10,56 @@ impl FreshRange {
     fn new(lower: u128, upper: u128) -> Self {
         FreshRange { lower, upper }
     }
+
+    fn len(&self) -> u128 {
+        if self.upper < self.lower {
+            println!("Range Error: {}-{}", self.lower, self.upper);
+            panic!("WTF")
+        }
+        self.upper - self.lower + 1
+    }
+
+    /// where b is the range being passed as a reference 
+    fn check_overlap(&self, b: &FreshRange) -> RangeOverlap {
+        if self == b {
+            return RangeOverlap::AEqualsB
+        }
+        else if self.lower >= b.lower 
+        && self.upper <= b.upper {
+            return RangeOverlap::AInsideB
+        }
+        else if self.lower <= b.lower 
+        && self.upper >= b.upper {
+            return RangeOverlap::AContainsB
+        }
+        else if self.lower < b.upper
+        && self.lower > b.lower {
+            return RangeOverlap::AStartsInB
+        } 
+        else if self.upper < b.upper
+        && self.upper > b.lower {
+            return RangeOverlap::AEndsInB
+        } 
+        else {
+            RangeOverlap::None
+        }
+    }
+}
+
+impl PartialEq for FreshRange {
+    fn eq(&self, other: &Self) -> bool {
+        self.lower == other.lower
+        && self.upper == other.upper
+    }
+}
+
+enum RangeOverlap {
+    AContainsB,
+    AInsideB,
+    AEndsInB,
+    AStartsInB,
+    AEqualsB,
+    None,
 }
 
 fn parse_ranges_and_ids(path: &str) -> Vec<FreshRange> {
@@ -43,33 +94,41 @@ fn parse_ranges_and_ids(path: &str) -> Vec<FreshRange> {
 fn get_non_overlapping_ranges(fresh_ranges: Vec<FreshRange>) -> Vec<FreshRange> {
     let mut non_overlapping_ranges: Vec<FreshRange> = Vec::new();
 
-    'outer: for range in fresh_ranges {
-
+    // we check every unvalidated range, if it is validated we push it to non_overlapping_ranges. If it is invalid we 
+    for mut range in fresh_ranges {
         if non_overlapping_ranges.is_empty() { non_overlapping_ranges.push(range); continue }
-        
-        '_inner: for validated_range in &non_overlapping_ranges {
-            if range.lower >= validated_range.lower 
-            && range.upper <= validated_range.upper { continue 'outer }
-            else if range.lower < validated_range.lower {}
-        }
-    } 
+        println!("Working on new range: {}-{}", range.lower, range.upper);
 
+        for non_overlapping_range in non_overlapping_ranges.clone() {
+            match range.check_overlap(&non_overlapping_range) {
+                RangeOverlap::AContainsB => non_overlapping_ranges.retain(|a | a != &non_overlapping_range),
+                RangeOverlap::AInsideB => range = FreshRange::new(0, 0),
+                RangeOverlap::AEndsInB => range.upper = non_overlapping_range.lower - 1,
+                RangeOverlap::AStartsInB => range.lower = non_overlapping_range.upper + 1,
+                RangeOverlap::AEqualsB => range = FreshRange::new(0, 0),
+                RangeOverlap::None => { continue },
+            }
+            
+        println!("Range modified: {}-{}\nDue to: {}-{}", range.lower, range.upper, non_overlapping_range.lower, non_overlapping_range.upper);
+        }
+        if range != FreshRange::new(0, 0) { non_overlapping_ranges.push(range); }
+    } 
 
     return non_overlapping_ranges
 }
 
 
 fn main() {
+
+    let mut total_ids = 0;
+
     let fresh_ranges = parse_ranges_and_ids("./assets/ex5_input.txt");
 
-    let mut all_fresh_ids: Vec<u128> = Vec::new();
+    let non_overlapping_ranges = get_non_overlapping_ranges(fresh_ranges);
 
-    '_outer: for fresh_range in fresh_ranges {
-        println!("Working on range: {}-{}",fresh_range.lower, fresh_range.upper);
-        '_inner: for id in fresh_range.lower..=fresh_range.upper {
-                all_fresh_ids.push(id);
-        } 
+    for range in non_overlapping_ranges {
+        total_ids += range.len()
     }
 
-    println!("{}", all_fresh_ids.len());
+    println!("Total IDs: {}", total_ids);
 }
