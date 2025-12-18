@@ -12,14 +12,9 @@ impl FreshRange {
     }
 
     fn len(&self) -> u128 {
-        if self.upper < self.lower {
-            println!("Range Error: {}-{}", self.lower, self.upper);
-            panic!("WTF")
-        }
         self.upper - self.lower + 1
     }
 
-    /// where b is the range being passed as a reference 
     fn check_overlap(&self, b: &FreshRange) -> RangeOverlap {
         if self == b {
             return RangeOverlap::AEqualsB
@@ -32,12 +27,12 @@ impl FreshRange {
         && self.upper >= b.upper {
             return RangeOverlap::AContainsB
         }
-        else if self.lower < b.upper
+        else if self.lower <= b.upper
         && self.lower > b.lower {
             return RangeOverlap::AStartsInB
         } 
         else if self.upper < b.upper
-        && self.upper > b.lower {
+        && self.upper >= b.lower {
             return RangeOverlap::AEndsInB
         } 
         else {
@@ -108,8 +103,6 @@ fn get_non_overlapping_ranges(fresh_ranges: Vec<FreshRange>) -> Vec<FreshRange> 
                 RangeOverlap::AEqualsB => range = FreshRange::new(0, 0),
                 RangeOverlap::None => { continue },
             }
-            
-        println!("Range modified: {}-{}\nDue to: {}-{}", range.lower, range.upper, non_overlapping_range.lower, non_overlapping_range.upper);
         }
         if range != FreshRange::new(0, 0) { non_overlapping_ranges.push(range); }
     } 
@@ -119,15 +112,14 @@ fn get_non_overlapping_ranges(fresh_ranges: Vec<FreshRange>) -> Vec<FreshRange> 
 
 
 fn main() {
-
     let mut total_ids = 0;
-
     let fresh_ranges = parse_ranges_and_ids("./assets/ex5_input.txt");
 
     let non_overlapping_ranges = get_non_overlapping_ranges(fresh_ranges);
 
     for range in non_overlapping_ranges {
-        total_ids += range.len()
+        println!("{}-{}",range.lower, range.upper);
+        total_ids += range.len();
     }
 
     println!("Total IDs: {}", total_ids);
